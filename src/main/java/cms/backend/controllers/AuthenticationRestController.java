@@ -44,15 +44,17 @@ public class AuthenticationRestController {
         authenticate(authenticationRequest.getUsername(), authenticationRequest.getPassword());
 
         // Reload password post-security so we can generate the token
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
-        final String token = jwtTokenUtil.generateToken(userDetails);
 
-        List<String> permission = new ArrayList<>();
+        final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
+        List<String> action = new ArrayList<>();
+        String permission = "";
         for(GrantedAuthority ga : userDetails.getAuthorities()) {
-            permission.add(ga.getAuthority());
+            action.add(ga.getAuthority());
+            permission += "," + ga.getAuthority();
         }
+        final String token = jwtTokenUtil.generateToken(userDetails, permission.substring(1));
         // Return the token
-        return ResponseEntity.ok(new JwtAuthenticationResponse(token, permission));
+        return ResponseEntity.ok(new JwtAuthenticationResponse(token, action));
     }
 
     @GetMapping(value = "${webconfig.jwt.route.authentication.refresh}", produces = "application/json")
@@ -63,7 +65,7 @@ public class AuthenticationRestController {
         JwtUser user = (JwtUser) userDetailsService.loadUserByUsername(username);
         List<String> permission = new ArrayList<>();
         for(GrantedAuthority ga : user.getAuthorities()) {
-            permission.add(ga.getAuthority());
+            permission.add(ga.getAuthority() );
         }
 
         if (jwtTokenUtil.canTokenBeRefreshed(token, user.getLastPasswordResetDate())) {
